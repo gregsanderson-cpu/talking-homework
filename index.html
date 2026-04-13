@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Talking Homework — Big Debate Club</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #f5ede6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Nunito', system-ui, sans-serif;
+    }
+    .phone {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      background: #f5ede6;
+      overflow: hidden;
+      position: relative;
+      font-family: 'Nunito', system-ui, sans-serif;
+    }
+    .screen { position: absolute; inset: 0; display: none; }
+    .screen.on { display: flex; flex-direction: column; }
+
+    .dots { display: flex; justify-content: center; gap: 5px; padding: 8px 0 10px; flex-shrink: 0; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; transition: background .2s, width .2s; }
+    .dot.on { background: #4a9c4e; width: 18px; border-radius: 3px; }
+
+    /* S1 arena */
+    #s1 { position: absolute; inset: 0; display: none; }
+    #s1.on { display: block; }
+    .arena { position: absolute; inset: 0; overflow: hidden; background: #1e3a5f; }
+    .floater { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; }
+    .floater.chosen .bubble { border: 3px solid #f5c842; box-shadow: 0 0 0 3px rgba(245,200,66,0.3); }
+    .floater.chosen .fname { color: #f5c842; }
+    .bubble { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 22px; transition: border .15s; }
+    .fname { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.65); text-align: center; max-width: 68px; line-height: 1.25; white-space: nowrap; }
+    .centre-card { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; z-index: 5; }
+    .bdc-big { font-size: 24px; font-weight: 900; color: #fff; line-height: 1.1; }
+    .hw-tag { font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: .12em; margin-top: 4px; }
+    .arena-prompt { font-size: 15px; font-weight: 900; color: #f5c842; margin-top: 10px; line-height: 1.4; }
+    .tap-hint { position: absolute; bottom: 82px; width: 100%; text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); pointer-events: none; }
+
+    .sheet-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0); z-index: 9; display: none; transition: background .32s; }
+    .sheet-overlay.open { display: block; background: rgba(0,0,0,0.4); }
+    .bottom-sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 20px 20px 0 0; padding: 18px 18px 32px; z-index: 10; transform: translateY(100%); transition: transform .32s cubic-bezier(.4,0,.2,1); }
+    .bottom-sheet.open { transform: translateY(0); }
+    .sheet-handle { width: 36px; height: 4px; background: #e0d0c8; border-radius: 2px; margin: 0 auto 12px; cursor: pointer; }
+    .sheet-meta { font-size: 11px; font-weight: 700; color: #aaa; margin-bottom: 4px; }
+    .sheet-title { font-size: 14px; font-weight: 900; color: #1a1a1a; margin-bottom: 10px; }
+    .chosen-preview { display: flex; align-items: center; gap: 10px; background: #eaf3de; border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; }
+    .cp-ico { font-size: 24px; }
+    .cp-name { font-size: 14px; font-weight: 900; color: #27500a; }
+    .cp-hint { font-size: 11px; color: #3b6d11; }
+    .sheet-cancel { text-align: center; margin-top: 10px; font-size: 12px; font-weight: 700; color: #aaa; cursor: pointer; }
+
+    .green-pill { display: block; width: 100%; background: #4a9c4e; color: #fff; border: none; border-radius: 50px; padding: 15px 20px; font-size: 16px; font-weight: 900; cursor: pointer; text-align: center; font-family: inherit; }
+    .green-pill:active { transform: scale(0.98); }
+    .green-pill:disabled { background: #bbb; cursor: default; }
+
+    /* top bar */
+    .top-bar { padding: 16px 16px 0; flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
+    .ssc-chip { display: inline-flex; align-items: center; gap: 8px; background: #fff; border-radius: 50px; padding: 6px 14px 6px 8px; border: 1.5px solid #e0d0c4; }
+    .ssc-dot { width: 30px; height: 30px; background: #4a9c4e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .ssc-name { font-size: 12px; font-weight: 900; color: #1a1a1a; }
+    .ssc-class { font-size: 10px; font-weight: 700; color: #888; margin-top: 1px; }
+
+    /* S2 ready */
+    #s2 .body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px; text-align: center; }
+    .ready-icon { font-size: 68px; margin-bottom: 18px; animation: bob 2s ease-in-out infinite; display: block; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .ready-title { font-size: 28px; font-weight: 900; color: #1a1a1a; line-height: 1.2; margin-bottom: 8px; }
+    .ready-sub { font-size: 14px; font-weight: 700; color: #888; margin-bottom: 32px; line-height: 1.5; }
+    .big-btns { display: flex; gap: 10px; width: 100%; }
+    .bbtn { flex: 1; border-radius: 18px; padding: 20px 8px; font-size: 15px; font-weight: 900; cursor: pointer; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: transform .12s; border: none; }
+    .bbtn:active { transform: scale(0.96); }
+    .bbtn-ico { font-size: 28px; }
+    .bbtn.yes { background: #4a9c4e; color: #fff; }
+    .bbtn.nope { background: #fff; color: #888; border: 2px solid #e0d0c4; }
+
+    /* S3 reveal */
+    #s3 .body { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 16px 18px 0; overflow: hidden; }
+    .eyebrow { font-size: 11px; font-weight: 800; color: #4a9c4e; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 10px; opacity: 0; transition: opacity .5s; }
+    .eyebrow.show { opacity: 1; }
+    .q-card { background: #fff; border: 1.5px solid #e0d0c4; border-radius: 20px; padding: 24px 20px; width: 100%; text-align: center; transform: scale(0.88); opacity: 0; transition: transform .55s cubic-bezier(.34,1.56,.64,1), opacity .4s; flex-shrink: 0; box-shadow: 0 2px 0 #e0d0c4; }
+    .q-card.show { transform: scale(1); opacity: 1; }
+    .q-ico { font-size: 40px; margin-bottom: 10px; display: block; }
+    .q-text { font-size: 20px; font-weight: 900; color: #1a1a1a; line-height: 1.35; }
+    .vid-wrap { width: 100%; border-radius: 14px; overflow: hidden; margin-top: 14px; opacity: 0; transform: translateY(12px); transition: opacity .4s, transform .4s; flex-shrink: 0; }
+    .vid-wrap.show { opacity: 1; transform: translateY(0); }
+    .vid-ph { background: #1e3a5f; border-radius: 14px; height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+    .play-circle { width: 48px; height: 48px; background: rgba(255,255,255,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .play-tri { width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 16px solid rgba(255,255,255,0.8); margin-left: 4px; }
+    .vid-label { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 700; }
+    .reveal-btn-wrap { width: 100%; margin-top: 14px; opacity: 0; transform: translateY(8px); transition: opacity .4s, transform .4s; flex-shrink: 0; }
+    .reveal-btn-wrap.show { opacity: 1; transform: translateY(0); }
+
+    /* S4 vote */
+    #s4 .body { flex: 1; display: flex; flex-direction: column; padding: 10px 16px 0; overflow: hidden; }
+    .q-banner { background: #1e3a5f; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; flex-shrink: 0; }
+    .qb-label { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+    .qb-text { font-size: 14px; font-weight: 900; color: #fff; line-height: 1.3; }
+    .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
+    .side { border: 2.5px solid #e0d0c4; border-radius: 14px; padding: 14px 8px; cursor: pointer; text-align: center; background: #fff; transition: border-color .15s, background .15s; box-shadow: 0 1px 0 #e0d0c4; }
+    .side.py { border-color: #4a9c4e; background: #eaf3de; }
+    .side.pn { border-color: #d85a30; background: #faece7; }
+    .side-ico { font-size: 28px; display: block; margin-bottom: 5px; }
+    .side-lbl { font-size: 13px; font-weight: 900; color: #1a1a1a; }
+    .side.py .side-lbl { color: #27500a; }
+    .side.pn .side-lbl { color: #993c1d; }
+    .side-desc { font-size: 10px; color: #aaa; margin-top: 2px; }
+    .args { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; flex-shrink: 0; }
+    .arg-box { background: #fff; border-radius: 10px; padding: 8px 9px; border: 1px solid #e8d8ce; }
+    .arg-ttl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .arg-ttl.y { color: #27500a; } .arg-ttl.n { color: #993c1d; }
+    .arg-item { font-size: 10px; color: #555; line-height: 1.5; padding: 2px 0; border-top: .5px solid #eee; }
+    .arg-item:first-of-type { border-top: none; padding-top: 0; }
+    .reason-block { flex-shrink: 0; margin-bottom: 8px; }
+    .r-label { font-size: 10px; font-weight: 800; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+    textarea { width: 100%; border: 1.5px solid #ddd; border-radius: 10px; padding: 10px; font-size: 14px; font-family: inherit; color: #1a1a1a; background: #fff; resize: none; height: 70px; line-height: 1.5; }
+    textarea::placeholder { color: #ccc; }
+    textarea:focus { outline: none; border-color: #4a9c4e; }
+    .char { font-size: 10px; color: #bbb; text-align: right; margin-top: 2px; }
+
+    /* S5 confirm */
+    #s5 { background: #f5ede6; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+    .conf-ico { font-size: 60px; margin-bottom: 12px; }
+    .conf-title { font-size: 26px; font-weight: 900; color: #1a1a1a; margin-bottom: 6px; }
+    .conf-name { color: #4a9c4e; }
+    .conf-sub { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 16px; }
+    .vote-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 99px; font-size: 14px; font-weight: 900; margin-bottom: 14px; }
+    .vpy { background: #eaf3de; color: #27500a; } .vpn { background: #faece7; color: #993c1d; }
+    .reason-box { background: #fff; border-radius: 14px; padding: 14px 16px; text-align: left; width: 100%; margin-bottom: 14px; border: 1.5px solid #e8d8ce; }
+    .rlabel { font-size: 10px; font-weight: 800; color: #bbb; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .rtext { font-size: 14px; color: #333; line-height: 1.6; }
+    .close-hint { font-size: 12px; color: #bbb; }
+  </style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- S1 ARENA -->
+  <div id="s1" class="on">
+    <div class="arena" id="arena"></div>
+    <div class="centre-card">
+      <div class="bdc-big">Big Debate Club</div>
+      <div class="hw-tag">Talking Homework</div>
+      <div class="arena-prompt">Who are you<br>debating as today?</div>
+    </div>
+    <div class="tap-hint">tap a debater to choose</div>
+    <div class="sheet-overlay" id="overlay" onclick="dismissSheet()"></div>
+    <div class="bottom-sheet" id="sheet">
+      <div class="sheet-handle" onclick="dismissSheet()"></div>
+      <div class="sheet-meta">5Y &middot; Fernley Primary School</div>
+      <div class="sheet-title">You're debating as...</div>
+      <div class="chosen-preview">
+        <div class="cp-ico" id="cp-ico"></div>
+        <div><div class="cp-name" id="cp-name"></div><div class="cp-hint">No real names ever collected</div></div>
+      </div>
+      <button class="green-pill" onclick="go('s2')">That's me, let's go &#8594;</button>
+      <div class="sheet-cancel" onclick="dismissSheet()">Not me, pick again</div>
+    </div>
+    <div class="dots" style="position:absolute;bottom:0;left:0;right:0;background:transparent">
+      <div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+  </div>
+
+  <!-- S2 READY -->
+  <div id="s2" class="screen">
+    <div class="top-bar">
+      <div class="ssc-chip">
+        <div class="ssc-dot" id="s2ico"></div>
+        <div><div class="ssc-name" id="s2name"></div><div class="ssc-class">5Y &middot; Fernley Primary School</div></div>
+      </div>
+    </div>
+    <div class="body">
+      <span class="ready-icon">🎤</span>
+      <div class="ready-title">Ready for this week's question?</div>
+      <div class="ready-sub">Your class is debating something big.<br>Are you in?</div>
+      <div class="big-btns">
+        <button class="bbtn yes" onclick="goReveal()"><span class="bbtn-ico">👊</span>Yes, let's go!</button>
+        <button class="bbtn nope" onclick="goReveal()"><span class="bbtn-ico">😬</span>Not right now</button>
+      </div>
+    </div>
+    <div class="dots"><div class="dot"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+
+  <!-- S3 REVEAL -->
+  <div id="s3" class="screen">
+    <div class="top-bar">
+      <div class="ssc-chip">
+        <div class="ssc-dot" id="s3ico"></div>
+        <div><div class="ssc-name" id="s3name"></div><div class="ssc-class">5Y &middot; Fernley Primary School</div></div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="eyebrow" id="eyebrow">This week's question</div>
+      <div class="q-card" id="qcard">
+        <span class="q-ico">&#x2753;</span>
+        <div class="q-text">Should school uniforms be abolished?</div>
+      </div>
+      <div class="vid-wrap" id="vwrap">
+        <div class="vid-ph">
+          <div class="play-circle"><div class="play-tri"></div></div>
+          <div class="vid-label">Watch the 1 min intro from your teacher</div>
+        </div>
+      </div>
+      <div class="reveal-btn-wrap" id="dbtnwrap">
+        <button class="green-pill" onclick="go('s4')">Time to debate &#8594;</button>
+      </div>
+    </div>
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+
+  <!-- S4 VOTE -->
+  <div id="s4" class="screen">
+    <div class="top-bar">
+      <div class="ssc-chip">
+        <div class="ssc-dot" id="s4ico"></div>
+        <div><div class="ssc-name" id="s4name"></div><div class="ssc-class">5Y &middot; Fernley Primary School</div></div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="q-banner">
+        <div class="qb-label">The question</div>
+        <div class="qb-text">Should school uniforms be abolished?</div>
+      </div>
+      <div class="sides">
+        <div class="side" id="cy" onclick="pick('yes')"><span class="side-ico">&#x2705;</span><div class="side-lbl">Yes, get rid</div><div class="side-desc">Abolish uniforms</div></div>
+        <div class="side" id="cn" onclick="pick('no')"><span class="side-ico">&#x274C;</span><div class="side-lbl">No, keep them</div><div class="side-desc">Uniforms should stay</div></div>
+      </div>
+      <div class="args">
+        <div class="arg-box"><div class="arg-ttl y">For abolishing</div><div class="arg-item">Express yourself</div><div class="arg-item">Saves families money</div><div class="arg-item">More comfortable</div></div>
+        <div class="arg-box"><div class="arg-ttl n">Against abolishing</div><div class="arg-item">Reduces brand pressure</div><div class="arg-item">Sense of belonging</div><div class="arg-item">Spot strangers easily</div></div>
+      </div>
+      <div class="reason-block">
+        <div class="r-label">Your reason</div>
+        <textarea id="reason" placeholder="Why do you think that? 1 to 3 sentences..." oninput="ontype()"></textarea>
+        <div class="char" id="cc">0 / 200</div>
+      </div>
+      <button class="green-pill" id="sbtn" disabled onclick="submit()">Submit my view &#8594;</button>
+    </div>
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot on"></div><div class="dot"></div></div>
+  </div>
+
+  <!-- S5 CONFIRM -->
+  <div id="s5" class="screen">
+    <div class="conf-ico">&#x1F389;</div>
+    <div class="conf-title">View submitted!</div>
+    <div id="vpill"></div>
+    <p class="conf-sub">Nice debating, <span class="conf-name" id="cname"></span>!<br>Your teacher shares results on Friday.</p>
+    <div class="reason-box"><div class="rlabel">Your reason</div><div class="rtext" id="rshow"></div></div>
+    <div class="close-hint">You can close this tab now</div>
+    <div class="dots" style="position:static;margin-top:20px"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot on"></div></div>
+  </div>
+
+</div>
+
+<script>
+  var debaters = [
+    {n:"Sir RightAlot", i:"🧐"},
+    {n:"I'm ALWAYS right", i:"☝️"},
+    {n:"The Family Boss", i:"👊"},
+    {n:"MightyMind", i:"🧠"},
+    {n:"Captain Wobblebottom", i:"🎩"},
+    {n:"Professor Biscuit", i:"🍪"},
+    {n:"Lady Snorkelworth", i:"🤿"},
+    {n:"Agent Pancake", i:"🥞"},
+    {n:"Baron von Splat", i:"💥"},
+    {n:"Sergeant Fluffington", i:"🐾"},
+    {n:"Admiral Crumble", i:"⚓"},
+    {n:"Countess Doodle", i:"✏️"},
+    {n:"Major Biscotti", i:"🍩"},
+    {n:"Empress Noodle", i:"🍜"},
+    {n:"Madam Kerfuffle", i:"🎪"},
+    {n:"Inspector Splodge", i:"🎨"},
+    {n:"Lord Dinglebop", i:"🔔"},
+    {n:"Dame Wobblehat", i:"🎭"},
+    {n:"General Squiggle", i:"🌀"},
+    {n:"Duke of Nonsense", i:"👑"}
+  ];
+
+  var chosen = null, pickedSide = null, floaters = [], lastChosen = null;
+  var arena = document.getElementById('arena');
+  var W = window.innerWidth > 430 ? 430 : window.innerWidth;
+  var H = window.innerHeight;
+
+  debaters.slice().sort(function(){ return Math.random() - .5; }).forEach(function(d) {
+    var el = document.createElement('div');
+    el.className = 'floater';
+    var x = 30 + Math.random() * (W - 100);
+    var y = 30 + Math.random() * (H - 120);
+    var spd = 0.9 + Math.random() * 0.8;
+    var ang = Math.random() * Math.PI * 2;
+    el.style.cssText = 'left:' + x + 'px;top:' + y + 'px;position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer';
+    el.innerHTML = '<div class="bubble">' + d.i + '</div><div class="fname">' + d.n + '</div>';
+    el.onclick = function() {
+      document.querySelectorAll('.floater').forEach(function(f){ f.classList.remove('chosen'); });
+      el.classList.add('chosen');
+      lastChosen = el; chosen = d;
+      document.getElementById('cp-ico').textContent = d.i;
+      document.getElementById('cp-name').textContent = d.n;
+      document.getElementById('sheet').classList.add('open');
+      document.getElementById('overlay').classList.add('open');
+    };
+    arena.appendChild(el);
+    floaters.push({ el:el, x:x, y:y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd });
+  });
+
+  function dismissSheet() {
+    document.getElementById('sheet').classList.remove('open');
+    document.getElementById('overlay').classList.remove('open');
+    if (lastChosen) lastChosen.classList.remove('chosen');
+    chosen = null; lastChosen = null;
+  }
+
+  function animate() {
+    var bW = arena.offsetWidth, bH = arena.offsetHeight;
+    floaters.forEach(function(f) {
+      f.x += f.vx; f.y += f.vy;
+      if (f.x < 4) { f.vx = Math.abs(f.vx); f.x = 4; }
+      if (f.x > bW - 70) { f.vx = -Math.abs(f.vx); f.x = bW - 70; }
+      if (f.y < 4) { f.vy = Math.abs(f.vy); f.y = 4; }
+      if (f.y > bH - 80) { f.vy = -Math.abs(f.vy); f.y = bH - 80; }
+      f.el.style.left = f.x + 'px';
+      f.el.style.top = f.y + 'px';
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  function setChip(s) {
+    if (!chosen) return;
+    var ico = document.getElementById(s + 'ico'), nm = document.getElementById(s + 'name');
+    if (ico) ico.textContent = chosen.i;
+    if (nm) nm.textContent = chosen.n;
+  }
+
+  function go(id) {
+    document.getElementById('s1').classList.remove('on');
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('on'); });
+    if (id === 's1') { document.getElementById('s1').classList.add('on'); return; }
+    document.getElementById(id).classList.add('on');
+    ['s2','s3','s4'].forEach(setChip);
+    if (chosen) document.getElementById('cname').textContent = chosen.n;
+  }
+
+  function goReveal() {
+    go('s3');
+    setTimeout(function(){ document.getElementById('eyebrow').classList.add('show'); }, 300);
+    setTimeout(function(){ document.getElementById('qcard').classList.add('show'); }, 600);
+    setTimeout(function(){ document.getElementById('vwrap').classList.add('show'); }, 1400);
+    setTimeout(function(){ document.getElementById('dbtnwrap').classList.add('show'); }, 2000);
+  }
+
+  function pick(s) {
+    pickedSide = s;
+    document.getElementById('cy').className = 'side' + (s === 'yes' ? ' py' : '');
+    document.getElementById('cn').className = 'side' + (s === 'no' ? ' pn' : '');
+    check();
+  }
+
+  function ontype() {
+    var v = document.getElementById('reason').value;
+    if (v.length > 200) { v = v.substring(0, 200); document.getElementById('reason').value = v; }
+    document.getElementById('cc').textContent = v.length + ' / 200';
+    check();
+  }
+
+  function check() {
+    document.getElementById('sbtn').disabled = !(pickedSide && document.getElementById('reason').value.trim().length >= 5);
+  }
+
+  function submit() {
+    document.getElementById('rshow').textContent = document.getElementById('reason').value;
+    document.getElementById('vpill').innerHTML = pickedSide === 'yes'
+      ? '<span class="vote-pill vpy">Yes, abolish uniforms</span>'
+      : '<span class="vote-pill vpn">No, keep uniforms</span>';
+    go('s5');
+  }
+</script>
+</body>
+</html>
